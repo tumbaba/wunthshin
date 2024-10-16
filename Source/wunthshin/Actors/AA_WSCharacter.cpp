@@ -1,6 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "wunthshinCharacter.h"
+#include "AA_WSCharacter.h"
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -10,13 +10,15 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "wunthshin/Components/PickUp/C_WSPickUp.h"
+#include "Engine/OverlapResult.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 //////////////////////////////////////////////////////////////////////////
 // AwunthshinCharacter
 
-AwunthshinCharacter::AwunthshinCharacter()
+AA_WSCharacter::AA_WSCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -54,16 +56,44 @@ AwunthshinCharacter::AwunthshinCharacter()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
-void AwunthshinCharacter::BeginPlay()
+void AA_WSCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
 }
 
+bool AA_WSCharacter::Take(UC_WSPickUp* InTakenComponent)
+{
+	// 이미 아이템을 소유하고 있는 경우
+	if (Item)
+	{
+		// todo: 테스트 용도, 손이 바빠도 인벤토리에 넣을 수 있음
+		return false;
+	}
+
+	// 아이템을 저장
+	// todo: 테스트 용도, 무기 컴포넌트나 인벤토리 컴포넌트에 의해 관리되어야 함
+	Item = InTakenComponent->GetOwner();
+	UE_LOG(LogTemplateCharacter, Log, TEXT("Pick up item: %s"), *Item->GetName());
+	return true;
+}
+
+bool AA_WSCharacter::Drop(UC_WSPickUp* InTakenComponent)
+{
+	if (!Item)
+	{
+		return false;
+	}
+	
+	UE_LOG(LogTemplateCharacter, Log, TEXT("Drop item: %s"), *Item->GetName());
+	Item = nullptr;
+	return true;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
-void AwunthshinCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
@@ -82,10 +112,16 @@ void AwunthshinCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
 		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AwunthshinCharacter::Move);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Move);
 
 		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AwunthshinCharacter::Look);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Look);
+
+		// 줍기 (Started로 한번 눌렸을 때만 실행되도록 처리)
+		EnhancedInputComponent->BindAction(PickUpAction, ETriggerEvent::Started, this, &AA_WSCharacter::FindAndTake);
+
+		// 떨어뜨리기
+		EnhancedInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &AA_WSCharacter::CheckItemAndDrop);
 	}
 	else
 	{
@@ -93,7 +129,7 @@ void AwunthshinCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	}
 }
 
-void AwunthshinCharacter::Move(const FInputActionValue& Value)
+void AA_WSCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
@@ -116,7 +152,7 @@ void AwunthshinCharacter::Move(const FInputActionValue& Value)
 	}
 }
 
-void AwunthshinCharacter::Look(const FInputActionValue& Value)
+void AA_WSCharacter::Look(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
@@ -126,5 +162,70 @@ void AwunthshinCharacter::Look(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void AA_WSCharacter::FindAndTake()
+{
+	TArray<FOverlapResult> OverlapResults;
+
+	FCollisionQueryParams QueryParams(NAME_None, false, this);
+	// 지금 들고 있는 아이템과의 충돌을 무시한다
+	if (Item)
+	{
+		QueryParams.AddIgnoredActor(Item);	
+	}
+
+	// 반환 값은 blocking일때 참을 반환하나, overlap으로 trace channel을 쓰기 때문에 무시함
+	GetWorld()->OverlapMultiByChannel
+	(
+		OverlapResults,
+		GetActorLocation(),
+		FQuat::Identity,
+		ECC_GameTraceChannel2,
+		FCollisionShape::MakeSphere(100.f)
+	);
+
+	if (!OverlapResults.IsEmpty())
+	{
+		// Overlap된 물체들을 거리 순서대로 정렬한다
+		OverlapResults.Sort
+		([this](const FOverlapResult& Left, const FOverlapResult& Right)
+		{
+			return FVector::Distance(Left.GetActor()->GetActorLocation(), GetActorLocation()) >
+				FVector::Distance(Right.GetActor()->GetActorLocation(), GetActorLocation());
+		});
+
+		for (FOverlapResult OverlapResult : OverlapResults)
+		{
+			const UC_WSPickUp* PickUpComponent = OverlapResult.GetActor()->GetComponentByClass<UC_WSPickUp>();
+			// Item trace channel에 pick up component가 없는 물체가 발견된 경우
+			ensureAlwaysMsgf(PickUpComponent, TEXT("Item does not have the pick up component!"));
+
+			if (PickUpComponent)
+			{
+				// 이미 소유자가 있는 물건이므로 패스
+				if (PickUpComponent->IsTaken())
+				{
+					continue;
+				}
+				
+				PickUpComponent->OnPickUp.Broadcast(this);
+				break;
+			}
+		}
+	}
+}
+
+void AA_WSCharacter::CheckItemAndDrop()
+{
+	if (Item)
+	{
+		const UC_WSPickUp* PickUpComponent = Item->GetComponentByClass<UC_WSPickUp>();
+		PickUpComponent->OnDropping.Broadcast(this);
+	}
+	else
+	{
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Character does not have Item, discard"));
 	}
 }
