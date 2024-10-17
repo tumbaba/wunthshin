@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "wunthshin/Actors/AA_WSCharacter.h"
 #include "BaseAnimInstance.generated.h"
 
 /**
@@ -15,9 +16,10 @@ class UBaseAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
+	
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
-
+	
 protected:
 	UPROPERTY()
 	class UPawnMovementComponent* MovementComponent;
@@ -65,4 +67,22 @@ protected:
 ;
 	UPROPERTY(BlueprintReadOnly)
 	bool bwallHighthHigh = false;
+
+	UPROPERTY()
+	AA_WSCharacter* CharateromponentRef;
+
+public:
+	UFUNCTION()
+	void CanFastRun();
+
+	UFUNCTION()
+	void OffFastRun();
+
+	UFUNCTION()
+	void OnWalkMove();
+
+	UFUNCTION()
+	void OffWalkMove();
+
+	
 };
