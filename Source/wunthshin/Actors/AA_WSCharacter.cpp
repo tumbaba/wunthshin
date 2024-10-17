@@ -3,13 +3,16 @@
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Animation/AnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/NavMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Components/StaticMeshComponent.h"
+#include "wunthshin/AnimInstance/BaseAnimInstance.h"
 #include "wunthshin/Components/PickUp/C_WSPickUp.h"
 #include "wunthshin/Components/Inventory/C_WSInventory.h"
 #include "Engine/OverlapResult.h"
@@ -26,8 +29,10 @@ const FName AA_WSCharacter::RightHandWeaponSocketName = TEXT("WeaponProp02");
 
 AA_WSCharacter::AA_WSCharacter()
 {
-    // Set size for collision capsule
-    GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+	
+	// Set size for collision capsule
+	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
     // Don't rotate when the controller rotates. Let that just affect the camera.
     bUseControllerRotationPitch = false;
@@ -67,6 +72,11 @@ AA_WSCharacter::AA_WSCharacter()
     CharacterStatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("CharacterStatsComponent"));
 
     RightHandWeapon = CreateDefaultSubobject<UChildActorComponent>(TEXT("RightHandWeapon"));
+	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
+	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+	
+	CameraBoom->bEnableCameraLag = true;
+
 }
 
 void AA_WSCharacter::BeginPlay()
@@ -155,7 +165,18 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
         // Moving
         EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Move);
+		// Cruuch
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::OnCrouch);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AA_WSCharacter::UnOnCrouch);
 
+		// FastRun
+		EnhancedInputComponent->BindAction(FastRunAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::FastRun);
+		EnhancedInputComponent->BindAction(FastRunAction, ETriggerEvent::Completed, this, &AA_WSCharacter::UnFastRun);
+
+		// Walk
+		EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::GoOnWalk);
+		EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Completed, this, &AA_WSCharacter::GoOffWalk);
+        
         // Looking
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Look);
 
@@ -205,6 +226,43 @@ void AA_WSCharacter::Look(const FInputActionValue& Value)
         AddControllerYawInput(LookAxisVector.X);
         AddControllerPitchInput(LookAxisVector.Y);
     }
+}
+
+void AA_WSCharacter::OnCrouch(const FInputActionValue& Value)
+{
+	if (GetMovementComponent()->IsFalling()) { return; }
+	Crouch();
+	
+}
+
+void AA_WSCharacter::UnOnCrouch(const FInputActionValue& Value)
+{
+	UnCrouch();
+}
+
+void AA_WSCharacter::FastRun(const FInputActionValue& Value)
+{
+	
+	OnFastRun.Broadcast();
+	GetCharacterMovement()->MaxWalkSpeed = 1000;
+}
+
+void AA_WSCharacter::UnFastRun(const FInputActionValue& Value)
+{
+	OffFastRun.Broadcast();
+	GetCharacterMovement()->MaxWalkSpeed = 500;
+}
+
+void AA_WSCharacter::GoOnWalk(const FInputActionValue& Value)
+{
+	OnWalk.Broadcast();
+	GetCharacterMovement()->MaxWalkSpeed = 200;
+}
+
+void AA_WSCharacter::GoOffWalk(const FInputActionValue& Value)
+{
+	OffWalk.Broadcast();
+	GetCharacterMovement()->MaxWalkSpeed = 500;
 }
 
 void AA_WSCharacter::FindAndTake()

@@ -17,6 +17,12 @@ class UC_WSInventory;
 class UCharacterStatsComponent;
 struct FInputActionValue;
 
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FFastRun);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FUnFastRun);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWalk);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOffWalk);
+
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 UCLASS(config = Game, Blueprintable)
@@ -44,6 +50,18 @@ class AA_WSCharacter : public ACharacter, public I_WSTaker
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* MoveAction;
 
+	/** Crouch Input Action*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* CrouchAction;
+
+	/** FastRun Input Action*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* FastRunAction;
+
+	/** Walk Input Action*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* WalkAction;
+
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
@@ -64,6 +82,13 @@ class AA_WSCharacter : public ACharacter, public I_WSTaker
 	UChildActorComponent* RightHandWeapon;
 
 public:
+	FFastRun OnFastRun;
+	FUnFastRun OffFastRun;
+	FOnWalk OnWalk;
+	FOffWalk OffWalk;
+
+	
+public:
 
 	static const FName RightHandWeaponSocketName;
 	
@@ -77,6 +102,17 @@ protected:
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+
+	void OnCrouch(const FInputActionValue& Value);
+	void UnOnCrouch(const FInputActionValue& Value);
+
+	void FastRun(const FInputActionValue& Value);
+	void UnFastRun(const FInputActionValue& Value);
+
+	void GoOnWalk(const FInputActionValue& Value);
+	void GoOffWalk(const FInputActionValue& Value);
+	
+
 
 	void FindAndTake();
 
