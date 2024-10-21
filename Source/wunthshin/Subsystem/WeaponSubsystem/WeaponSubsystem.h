@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "wunthshin/Subsystem/TableQueryGameInstanceSubsystem.h"
+
+#include "wunthshin/Subsystem/TableQuerySubsystem.h"
 #include "WeaponSubsystem.generated.h"
 
 /**
@@ -17,5 +18,15 @@ class WUNTHSHIN_API UWeaponSubsystem : public UTableQueryGameInstanceSubsystem
 	
 public:
 	UWeaponSubsystem();
+
+};
+
+UCLASS()
+class WUNTHSHIN_API UWeaponEditorSubsystem : public UTableQueryEditorSubsystem
+{
+	GENERATED_BODY()
+	
+public:
+	UWeaponEditorSubsystem();
 
 };

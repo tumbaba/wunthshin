@@ -19,6 +19,7 @@
 #include "Item/A_WSItem.h"
 #include "Item/Weapon/A_WSWeapon.h"
 #include "wunthshin/Components/CharacterStats/CharacterStatsComponent.h" 
+#include "wunthshin/Data/CharacterTableRow.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -72,11 +73,38 @@ AA_WSCharacter::AA_WSCharacter()
     CharacterStatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("CharacterStatsComponent"));
 
     RightHandWeapon = CreateDefaultSubobject<UChildActorComponent>(TEXT("RightHandWeapon"));
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 	
 	CameraBoom->bEnableCameraLag = true;
 
+}
+
+UScriptStruct* AA_WSCharacter::GetTableType() const
+{
+    return FCharacterTableRow::StaticStruct();
+}
+
+void AA_WSCharacter::ApplyAsset(const FDataTableRowHandle& InRowHandle)
+{
+    if (InRowHandle.IsNull()) return;
+
+    const FCharacterTableRow* Data = InRowHandle.GetRow<FCharacterTableRow>(TEXT(""));
+
+    if (!Data)
+    {
+        return;
+    }
+
+    // todo: 캐릭터의 이름, 아이콘
+
+    if (Data->SkeletalMesh)
+    {
+        GetMesh()->SetSkeletalMesh(Data->SkeletalMesh);
+    }
+
+    if (Data->AnimInstance)
+    {
+        GetMesh()->SetAnimInstanceClass(Data->AnimInstance);
+    }
 }
 
 void AA_WSCharacter::BeginPlay()
@@ -92,6 +120,12 @@ void AA_WSCharacter::BeginPlay()
             FAttachmentTransformRules::SnapToTargetNotIncludingScale,
             RightHandWeaponSocketName
         ));
+}
+
+void AA_WSCharacter::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    FetchAsset(this, AssetName);
 }
 
 bool AA_WSCharacter::Take(UC_WSPickUp* InTakenComponent)
@@ -324,9 +358,18 @@ void AA_WSCharacter::CheckItemAndDrop()
     if (!Inventory->GetItems().IsEmpty())
     {
         // 인벤토리의 첫번째 아이템을 버린다
-        const AA_WSItem* Item = Inventory->GetItems().Top();
-        const UC_WSPickUp* PickUpComponent = Item->GetComponentByClass<UC_WSPickUp>();
-        PickUpComponent->OnDropping.Broadcast(this);
+        for (const AA_WSItem* Item : Inventory->GetItems())
+        {
+            if (Item->IsA<AA_WSWeapon>())
+            {
+                // 무기는 버릴 수 없음
+                continue;
+            }
+
+            const UC_WSPickUp* PickUpComponent = Item->GetComponentByClass<UC_WSPickUp>();
+            PickUpComponent->OnDropping.Broadcast(this);
+            break;
+        }
     }
     else
     {

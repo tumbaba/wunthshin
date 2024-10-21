@@ -6,27 +6,27 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 
 #include "wunthshin/Subsystem/TableQuerySubsystem.h"
-#include "ItemSubsystem.generated.h"
+#include "CharacterSubsystem.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class WUNTHSHIN_API UItemSubsystem : public UTableQueryGameInstanceSubsystem
+class WUNTHSHIN_API UCharacterSubsystem : public UTableQueryGameInstanceSubsystem
 {
 	GENERATED_BODY()
 	
 public:
-	UItemSubsystem();
+	UCharacterSubsystem();
 
 };
 
 UCLASS()
-class WUNTHSHIN_API UItemEditorSubsystem : public UTableQueryEditorSubsystem
+class WUNTHSHIN_API UCharacterEditorSubsystem : public UTableQueryEditorSubsystem
 {
 	GENERATED_BODY()
 	
 public:
-	UItemEditorSubsystem();
+	UCharacterEditorSubsystem();
 
 };

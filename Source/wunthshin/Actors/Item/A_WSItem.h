@@ -4,32 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
+#include "wunthshin/Interfaces/DataTableFetcher/DataTableFetcher.h"
+
 #include "A_WSItem.generated.h"
 
+struct FItemTableRow;
 class UC_WSPickUp;
-USTRUCT()
-struct WUNTHSHIN_API FItemTableRow : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	// ItemType(소모, 장비, 기타 등)
-	/*UPROPERTY(EditAnywhere)
-	EItemType ItemType;*/
-
-	// ItemName을 Key값으로 사용
-	UPROPERTY(EditAnywhere)
-	FName ItemName;
-
-	UPROPERTY(EditAnywhere)
-	UTexture2D* ItemIcon;
-
-	UPROPERTY(EditAnywhere)
-	UStaticMesh* StaticMesh;
-};
-
 
 UCLASS()
-class WUNTHSHIN_API AA_WSItem : public AActor
+class WUNTHSHIN_API AA_WSItem : public AActor, public IDataTableFetcher
 {
 	GENERATED_BODY()
 
@@ -50,15 +34,16 @@ class WUNTHSHIN_API AA_WSItem : public AActor
 	UC_WSPickUp* PickUpComponent;
 
 	// 아이템 정보를 불러오기 위한 핸들
-	UPROPERTY(EditAnywhere, meta = (RowType = "/Script/WUNTHSHIN.ItemTableRow"))
-	FDataTableRowHandle DataTableRowHandle;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Asset", meta = (AllowPrivateAccess = "true"))
+	FName AssetName;
 	
 	// 충돌체 동적 생성 후 호출
 	void InitializeCollisionLazy() const;
+
+	// 매시의 Bound에 따라 업데이트
+	void FitCollisionToMesh() const;
 	
 public:
-	// 데이터 테이블의 타입, 다른 데이터 테이블을 쓸 경우 해당 타입을 재정의.
-	using TRowTableType = FItemTableRow;
 	static const FName CollisionComponentName;
 	
 	// Sets default values for this actor's properties
@@ -71,11 +56,20 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void InitializeCollisionComponent(TSubclassOf<UShapeComponent> InClass);
 
-	// 아이템 데이터 세팅
-	virtual void SetData(const FDataTableRowHandle& InRowHandle);
+	virtual UScriptStruct* GetTableType() const override;
 
+	// 아이템 데이터 세팅
+	virtual void ApplyAsset(const FDataTableRowHandle& InRowHandle) override;
+
+	FORCEINLINE UStaticMeshComponent* GetMesh() const { return MeshComponent; }
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	virtual FName GetAssetName() const { return AssetName; }
+
+	// 충돌체 업데이트 (상속 클래스가 다른 테이블을 사용하고 Item의 데이터 테이블에서 충돌 적용이 필요한 경우)
+	void UpdateCollisionFromDataTable(const FItemTableRow* Data);
 
 };

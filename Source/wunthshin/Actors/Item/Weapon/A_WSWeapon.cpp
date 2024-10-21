@@ -3,9 +3,11 @@
 
 #include "A_WSWeapon.h"
 
+#include "Components/ShapeComponent.h"
+
 #include "Engine/DataTable.h"
 #include "wunthshin/Components/Weapon/C_WSWeapon.h"
-
+#include "wunthshin/Data/ItemTableRow.h"
 
 AA_WSWeapon::AA_WSWeapon(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -13,20 +15,36 @@ AA_WSWeapon::AA_WSWeapon(const FObjectInitializer& ObjectInitializer)
 	WeaponComponent = CreateDefaultSubobject<UC_WSWeapon>(TEXT("Weapon"));
 }
 
-void AA_WSWeapon::SetData(const FDataTableRowHandle& InRowHandle)
+UScriptStruct* AA_WSWeapon::GetTableType() const
 {
-	Super::SetData(InRowHandle);
+	return FWeaponTableRow::StaticStruct();
+}
 
+void AA_WSWeapon::ApplyAsset(const FDataTableRowHandle& InRowHandle)
+{
+	// Item 데이터 테이블과 무기 데이터 테이블은 따로 있기 때문에
+	// 슈퍼 클래스 호출은 무시
+	
 	if (InRowHandle.IsNull())
 	{
 		return;
 	}
 
-	const TRowTableType* TableRow = InRowHandle.GetRow<TRowTableType>(TEXT(""));
+	const FWeaponTableRow* TableRow = InRowHandle.GetRow<FWeaponTableRow>(TEXT(""));
 
 	if (!TableRow)
 	{
 		return;
+	}
+	
+	if (TableRow->StaticMesh)
+	{
+		GetMesh()->SetStaticMesh(TableRow->StaticMesh);
+	}
+
+	if (TableRow->CollisionShape)
+	{
+		UpdateCollisionFromDataTable(TableRow);
 	}
 	
 	DefaultAttackMontage = TableRow->DefaultAttackMontage;
