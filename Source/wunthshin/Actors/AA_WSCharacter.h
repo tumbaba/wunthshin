@@ -24,6 +24,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FFastRun);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FUnFastRun);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWalk);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOffWalk);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGlide);
+
+
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -64,6 +67,23 @@ class AA_WSCharacter : public ACharacter, public I_WSTaker, public IDataTableFet
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* WalkAction;
 
+	/** Zoom Wheel Action*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ZoomWheelAction;
+
+
+
+	UPROPERTY()
+	bool bWalkActionClick = false;
+	UPROPERTY()
+	bool bCanWalk = true;
+	UPROPERTY()
+	float WalkCoolTime = 0.2f;
+
+	bool bCanGlide = false;
+	
+	
+
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
@@ -90,12 +110,17 @@ class AA_WSCharacter : public ACharacter, public I_WSTaker, public IDataTableFet
 	FName AssetName;
 
 public:
+	//딜리게이트
 	FFastRun OnFastRun;
 	FUnFastRun OffFastRun;
 	FOnWalk OnWalk;
 	FOffWalk OffWalk;
 	FTimerHandle FastRunCooldownTimer;
+	FGlide Glide;
 
+protected:
+	FTimerHandle WalkCoolTimer;
+	
 public:
 	static const FName RightHandWeaponSocketName;
 	
@@ -135,7 +160,14 @@ protected:
 	void UnFastRun(const FInputActionValue& Value);
 
 	void GoOnWalk(const FInputActionValue& Value);
-	void GoOffWalk(const FInputActionValue& Value);
+	void WalkCollTimeChange();
+
+	void OnJump(const FInputActionValue& Value);
+	void StopOnJump(const FInputActionValue& Value);
+
+	void ZoomWheel(const FInputActionValue& Value);
+
+	bool CanGlide();
 
 	void FindAndTake();
 
@@ -147,6 +179,8 @@ protected:
 
 	// To add mapping context
 	virtual void BeginPlay();
+	virtual void Tick(float DeltaSeconds) override;
+
 
 	// 에셋 갱신
 	virtual void OnConstruction(const FTransform& Transform) override;

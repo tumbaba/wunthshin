@@ -3,6 +3,7 @@
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -11,7 +12,6 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "Components/StaticMeshComponent.h"
 #include "wunthshin/AnimInstance/BaseAnimInstance.h"
 #include "wunthshin/Components/PickUp/C_WSPickUp.h"
 #include "wunthshin/Components/Inventory/C_WSInventory.h"
@@ -56,6 +56,7 @@ AA_WSCharacter::AA_WSCharacter()
         ADD_INPUT_ACTION(LookAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Look.IA_Look'");
         ADD_INPUT_ACTION(PickUpAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_PickUp.IA_PickUp'");
         ADD_INPUT_ACTION(DropAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Drop.IA_Drop'");
+        ADD_INPUT_ACTION(ZoomWheelAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_ZoomWheel.IA_ZoomWheel'");
     }
 
 
@@ -85,6 +86,7 @@ AA_WSCharacter::AA_WSCharacter()
     GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
     GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
     GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
+    GetCharacterMovement()->GravityScale = 1.0f;
 
     // Create a camera boom (pulls in towards the player if there is a collision)
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -177,6 +179,25 @@ void AA_WSCharacter::OnConstruction(const FTransform& Transform)
     FetchAsset(this, AssetName);
 }
 
+void AA_WSCharacter::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    UCharacterMovementComponent* CharacterComponent = GetCharacterMovement();
+    if (bCanGlide)
+    {
+        //GetCharacterMovement()->GravityScale = 0.05f;
+        GetCharacterMovement()->Velocity.Z = FMath::Clamp(GetCharacterMovement()->Velocity.Z, -100.f, 0.0f);
+    }
+    
+
+    if (!CharacterComponent->IsFalling())
+    {
+        bCanGlide = false;
+        StopJumping();
+    }
+    
+}
+
 bool AA_WSCharacter::Take(UC_WSPickUp* InTakenComponent)
 {
     // 아이템을 저장
@@ -233,11 +254,12 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
         // Jumping
-        EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-        EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+        EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AA_WSCharacter::OnJump);
+        EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AA_WSCharacter::StopOnJump);
 
         // Moving
         EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Move);
+
 		// Cruuch
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::OnCrouch);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AA_WSCharacter::UnOnCrouch);
@@ -247,9 +269,12 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInputComponent->BindAction(FastRunAction, ETriggerEvent::Completed, this, &AA_WSCharacter::UnFastRun);
 
 		// Walk
-		EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::GoOnWalk);
-		EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Completed, this, &AA_WSCharacter::GoOffWalk);
-        
+        EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Started, this, &AA_WSCharacter::GoOnWalk);
+        //EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Started, this, &AA_WSCharacter::GoOffWalk);
+
+        // ZoomWheel
+        EnhancedInputComponent->BindAction(ZoomWheelAction, ETriggerEvent::Started, this, &AA_WSCharacter::ZoomWheel);
+
         // Looking
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Look);
 
@@ -303,9 +328,15 @@ void AA_WSCharacter::Look(const FInputActionValue& Value)
 
 void AA_WSCharacter::OnCrouch(const FInputActionValue& Value)
 {
+    UBaseAnimInstance* BaseAnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
 	if (GetMovementComponent()->IsFalling()) { return; }
-	Crouch();
+    
 	
+    if (BaseAnimInstance->GetbCanFastRun())
+    {
+        return;
+    }
+    Crouch();
 }
 
 void AA_WSCharacter::UnOnCrouch(const FInputActionValue& Value)
@@ -316,8 +347,16 @@ void AA_WSCharacter::UnOnCrouch(const FInputActionValue& Value)
 void AA_WSCharacter::FastRun(const FInputActionValue& Value)
 {
     bIsFastRunning = true;
-    OnFastRun.Broadcast();
-    GetCharacterMovement()->MaxWalkSpeed = 1000;
+	OnFastRun.Broadcast();
+    UBaseAnimInstance* BaseAnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+    if (BaseAnimInstance->GetbFastRun() && !BaseAnimInstance->GetbWalk())
+    {
+        if (!BaseAnimInstance->GetIsCrouch())
+        {
+            GetCharacterMovement()->MaxWalkSpeed = 1000;
+        }
+        
+    }
 
     // 스태미나 업데이트
     CharacterStatsComponent->UpdateStamina(GetWorld()->GetDeltaSeconds(), true);
@@ -326,23 +365,112 @@ void AA_WSCharacter::FastRun(const FInputActionValue& Value)
 void AA_WSCharacter::UnFastRun(const FInputActionValue& Value)
 {
     bIsFastRunning = false;
-    OffFastRun.Broadcast();
-    GetCharacterMovement()->MaxWalkSpeed = 500;
+	OffFastRun.Broadcast();
+    UBaseAnimInstance* BaseAnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+    if (!BaseAnimInstance->GetbFastRun() && !BaseAnimInstance->GetbWalk())
+    {
+        GetCharacterMovement()->MaxWalkSpeed = 500;
+    }
+      CharacterStatsComponent->UpdateStamina(GetWorld()->GetDeltaSeconds(), false);
 
-    CharacterStatsComponent->UpdateStamina(GetWorld()->GetDeltaSeconds(), false);
+	
 }
 
 void AA_WSCharacter::GoOnWalk(const FInputActionValue& Value)
 {
-	OnWalk.Broadcast();
-	GetCharacterMovement()->MaxWalkSpeed = 200;
+    if (bCanWalk)
+    {
+        OnWalk.Broadcast();
+        UBaseAnimInstance* BaseAnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+        if (BaseAnimInstance->GetbWalk() && !bWalkActionClick && !BaseAnimInstance->GetbFastRun())
+        {
+            bWalkActionClick = !bWalkActionClick;
+            GetCharacterMovement()->MaxWalkSpeed = 200;
+            bCanWalk = false;
+            GetWorldTimerManager().SetTimer(WalkCoolTimer, this, &ThisClass::WalkCollTimeChange, WalkCoolTime, false);
+        }
+        else if (!BaseAnimInstance->GetbFastRun() && bWalkActionClick)
+        {
+            bWalkActionClick = !bWalkActionClick;
+            GetCharacterMovement()->MaxWalkSpeed = 500;
+            bCanWalk = false;
+            GetWorldTimerManager().SetTimer(WalkCoolTimer, this, &ThisClass::WalkCollTimeChange, WalkCoolTime, false);
+        }
+    }
+	
+	
 }
 
-void AA_WSCharacter::GoOffWalk(const FInputActionValue& Value)
+void AA_WSCharacter::WalkCollTimeChange()
 {
-	OffWalk.Broadcast();
-	GetCharacterMovement()->MaxWalkSpeed = 500;
+    bCanWalk = true;
 }
+
+void AA_WSCharacter::OnJump(const FInputActionValue& Value)
+{
+    UCharacterMovementComponent* CharacterComponent = GetCharacterMovement();
+    if (!bCanGlide && !CharacterComponent->IsFalling())
+    {
+        Jump();
+    }
+    else if (CharacterComponent->IsFalling())
+    {
+
+        if (CanGlide())
+        {
+            bCanGlide = !bCanGlide;
+            
+        }
+        else if (bCanGlide)
+        {
+            bCanGlide = !bCanGlide;
+            
+        }
+    }
+}
+
+void AA_WSCharacter::StopOnJump(const FInputActionValue& Value)
+{
+    StopJumping();
+}
+
+void AA_WSCharacter::ZoomWheel(const FInputActionValue& Value)
+{
+    USpringArmComponent* SpringArm = GetCameraBoom();
+    //if (!SpringArm) { ensure(false); return; }
+    const float ActionValue = Value.Get<float>();
+    if (FMath::IsNearlyZero(ActionValue)) { return; }
+    SpringArm->TargetArmLength = FMath::Clamp(SpringArm->TargetArmLength + (ActionValue*50), 50.f, 500.f);
+    
+}
+
+
+
+bool AA_WSCharacter::CanGlide()
+{
+    ACharacter* Character = Cast<ACharacter>(GetOwner());
+    FHitResult HitResult;
+    FCollisionQueryParams Params;
+    UCharacterMovementComponent* CharacterComponent = GetCharacterMovement();
+    const FNavAgentProperties& AgentProps = CharacterComponent->GetCharacterOwner()->GetNavAgentPropertiesRef();
+    const float SearchRadius = AgentProps.AgentRadius * 2.0f;
+    const FVector Start = GetActorLocation();
+    const FVector End = Start - FVector(0, 0, 300);
+    bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
+
+    //DrawDebugLine
+    {
+        FColor LineColor = FColor::Red;
+        if (!bHit)
+        {
+            LineColor = FColor::Green;
+        }
+        DrawDebugLine(GetWorld(), Start, End, LineColor, false, 3.f, 0U, 2.0f);
+    }
+    return !bHit;
+}
+
+
 
 void AA_WSCharacter::FindAndTake()
 {
