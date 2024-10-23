@@ -48,6 +48,8 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	bool bIsFalling = false;
 
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsGlide = false;
 	// ���׹̳��ϰ� ���� �ʿ�
 	UPROPERTY(BlueprintReadOnly)
 	bool bStaminaEmpty = false;
@@ -69,7 +71,7 @@ protected:
 	bool bwallHighthHigh = false;
 
 	UPROPERTY()
-	AA_WSCharacter* CharateromponentRef;
+	AA_WSCharacter* CharaterComponentRef;
 
 public:
 	UFUNCTION()
@@ -83,6 +85,26 @@ public:
 
 	UFUNCTION()
 	void OffWalkMove();
+	
+	UFUNCTION()
+	bool GetbFastRun();
+
+	UFUNCTION()
+	bool GetbWalk();
+
+	UFUNCTION()
+	void CanGlide();
+
+	UFUNCTION()
+	bool GetGanClide();
+
+	UFUNCTION()
+	bool GetIsCrouch();
+
+	UFUNCTION()
+	bool GetbCanFastRun();
+
+	//void SetRootMotionMode();
 
 	
 };
