@@ -12,17 +12,19 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "wunthshin/AnimInstance/BaseAnimInstance.h"
 #include "wunthshin/Components/PickUp/C_WSPickUp.h"
 #include "wunthshin/Components/Inventory/C_WSInventory.h"
 #include "Engine/OverlapResult.h"
 #include "Item/A_WSItem.h"
 #include "Item/Weapon/A_WSWeapon.h"
 #include "wunthshin/Components/CharacterStats/CharacterStatsComponent.h" 
-#include "wunthshin/Data/CharacterTableRow.h"
 #include "InputMappingContext.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "wunthshin/Enums.h"
+#include "wunthshin/Components/Shield/C_WSShield.h"
+#include "wunthshin/Data/CharacterTableRow/CharacterTableRow.h"
 #include "wunthshin/Data/ItemMetadata/SG_WSItemMetadata.h"
+#include "wunthshin/Subsystem/ElementSubsystem/ElementSubsystem.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -108,10 +110,13 @@ AA_WSCharacter::AA_WSCharacter()
     // Create CharacterStats
     CharacterStatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("CharacterStatsComponent"));
 
+    // Create a shield component.
+    Shield = CreateDefaultSubobject<UC_WSShield>(TEXT("ShieldComponent"));
+    Shield->SetupAttachment(GetMesh());
+    
     RightHandWeapon = CreateDefaultSubobject<UChildActorComponent>(TEXT("RightHandWeapon"));
 	
 	CameraBoom->bEnableCameraLag = true;
-
 }
 
 void AA_WSCharacter::HandleStaminaDepleted()
@@ -191,6 +196,12 @@ void AA_WSCharacter::BeginPlay()
             FAttachmentTransformRules::SnapToTargetNotIncludingScale,
             RightHandWeaponSocketName
         ));
+
+    {
+        // todo/test: 효과 적용이 된 경우를 테스트, 무기/몹등이 구현되고 나서 지워야 함
+        ApplyElement(this, this, UElementSubsystem::GetElementHandle(GetWorld(), "Rock"));
+        ApplyElement(this, this, UElementSubsystem::GetElementHandle(GetWorld(), "Fire"));   
+    }
 }
 
 void AA_WSCharacter::OnConstruction(const FTransform& Transform)
@@ -381,7 +392,7 @@ void AA_WSCharacter::FastRun()
 {
     bIsFastRunningPressing = true;
 
-    if (CanFastRun()) 
+    if (!CanFastRun()) 
     {
         return;
     }
