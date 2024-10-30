@@ -92,6 +92,7 @@ AA_WSCharacter::AA_WSCharacter()
     GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
     GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
     GetCharacterMovement()->GravityScale = 1.0f;
+    GetCharacterMovement()->SetWalkableFloorAngle(70.f);
 
     // Create a camera boom (pulls in towards the player if there is a collision)
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -316,6 +317,8 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
         // 떨어뜨리기
         EnhancedInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &AA_WSCharacter::CheckItemAndDrop);
+
+        
     }
     else
     {
