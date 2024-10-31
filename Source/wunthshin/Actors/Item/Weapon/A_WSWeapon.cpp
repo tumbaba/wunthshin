@@ -8,7 +8,7 @@
 #include "Engine/DataTable.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "wunthshin/Components/Weapon/C_WSWeapon.h"
-#include "wunthshin/Data/ItemTableRow/ItemTableRow.h"
+#include "wunthshin/Data/Items/ItemTableRow/ItemTableRow.h"
 #include "wunthshin/Subsystem/Utility.h"
 #include "Components/WidgetComponent.h"
 
@@ -30,6 +30,18 @@ UScriptStruct* AA_WSWeapon::GetTableType() const
 {
 	return FWeaponTableRow::StaticStruct();
 }
+
+UClass* AA_WSWeapon::GetSubsystemType() const
+{
+	return UWeaponSubsystem::StaticClass();
+}
+
+#ifdef WITH_EDITOR
+UClass* AA_WSWeapon::GetEditorSubsystemType() const
+{
+	return UWeaponEditorSubsystem::StaticClass();
+}
+#endif
 
 void AA_WSWeapon::ApplyAsset(const FDataTableRowHandle& InRowHandle)
 {
@@ -55,8 +67,8 @@ void AA_WSWeapon::ApplyAsset(const FDataTableRowHandle& InRowHandle)
 
 	// todo: 속성 창에서 숨기기
 	// Collision Shape은 무시
-	
-	ItemMetadata = FItemSubsystemUtility::GetMetadata<UWeaponSubsystem, UWeaponEditorSubsystem, USG_WSItemMetadata>(GetWorld(), TableRow->ItemName);
+
+	ItemMetadata = FItemSubsystemUtility::GetMetadata<USG_WSItemMetadata>(GetWorld(), this, TableRow->ItemName);
 	
 	DefaultAttackMontage = TableRow->DefaultAttackMontage;
 }
