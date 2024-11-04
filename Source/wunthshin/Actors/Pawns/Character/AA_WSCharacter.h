@@ -3,14 +3,17 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "wunthshin/Interfaces/Taker/Taker.h"
 #include "Logging/LogMacros.h"
 
+#include "wunthshin/Interfaces/Taker/Taker.h"
 #include "wunthshin/Interfaces/DataTableFetcher/DataTableFetcher.h"
 #include "wunthshin/Interfaces/ElementTracked/ElementTracked.h"
+#include "wunthshin/Interfaces/CommonPawn/CommonPawn.h"
 
 #include "AA_WSCharacter.generated.h"
 
+class UPawnMovementComponent;
+class UStatsComponent;
 class UC_WSShield;
 class AA_WSWeapon;
 class USpringArmComponent;
@@ -18,7 +21,6 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 class UC_WSInventory;
-class UCharacterStatsComponent;
 struct FInputActionValue;
 
 
@@ -28,12 +30,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWalk);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOffWalk);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGlide);
 
-
-
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 UCLASS(config = Game, Blueprintable)
-class AA_WSCharacter : public ACharacter, public I_WSTaker, public IDataTableFetcher, public IElementTracked
+class AA_WSCharacter : public ACharacter, public I_WSTaker, public IDataTableFetcher, public IElementTracked, public ICommonPawn
 {
 	GENERATED_BODY()
 	
@@ -90,7 +90,7 @@ class AA_WSCharacter : public ACharacter, public I_WSTaker, public IDataTableFet
 	UC_WSShield* Shield;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats", meta = (AllowPrivateAccess = "true"))
-	UCharacterStatsComponent* CharacterStatsComponent;
+	UStatsComponent* CharacterStatsComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	UChildActorComponent* RightHandWeapon;
@@ -134,9 +134,6 @@ public:
 	
 	AA_WSCharacter();
 
-	// 스태미나가 0일 때 호출하는 공개 메서드
-	void HandleStaminaDepleted();
-
 	// FastRun을 호출하는 공개 메서드
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void K2_FastRun();
@@ -144,13 +141,6 @@ public:
 	// UnFastRun을 호출하는 공개 메서드
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void K2_UnFastRun();
-
-	// FastRun 상태를 반환하는 함수
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	bool IsFastRunning() const { return bIsFastRunning; }
-
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	bool IsWalking() const { return bIsWalking; }
 
 	// 커스텀 숙이기 가능 여부 함수
 	bool CanBeCrouched() const;
@@ -163,7 +153,7 @@ public:
 
 	virtual UScriptStruct* GetTableType() const override;
 
-	virtual void ApplyAsset(const FDataTableRowHandle& InRowHandle) override;
+	virtual void ApplyAsset(const FTableRowBase* InRowPointer) override;
 
 	virtual UClass* GetSubsystemType() const override;
 #ifdef WITH_EDITOR
@@ -217,12 +207,27 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-	// 오른손 무기
-	FORCEINLINE class UChildActorComponent* GetRightHandWeapon() const { return RightHandWeapon; }
-
 
 	virtual bool Take(UC_WSPickUp* InTakenComponent) override;
 	
 	// 사용할 에셋의 이름
 	void SetAssetName(const FName& InAssetName) { AssetName = InAssetName; }
+
+	// ICommonPawn
+	virtual FName GetAssetName() const override { return AssetName; }
+	virtual UCapsuleComponent* GetCapsuleComponent() const override { return ACharacter::GetCapsuleComponent(); }
+	virtual USkeletalMeshComponent* GetSkeletalMeshComponent() const override { return GetMesh(); }
+	virtual UC_WSInventory* GetInventoryComponent() const override { return Inventory; }
+	virtual UC_WSShield* GetShieldComponent() const override { return Shield; }
+	virtual UStatsComponent* GetStatsComponent() const override { return CharacterStatsComponent; }
+	virtual UChildActorComponent* GetRightHandComponent() const override { return RightHandWeapon; }
+	virtual UPawnMovementComponent* GetMovementComponent() const override { return ACharacter::GetMovementComponent(); }
+
+	virtual void HandleStaminaDepleted() override;
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	virtual bool IsFastRunning() const override { return bIsFastRunning; }
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	virtual bool IsWalking() const override { return bIsWalking; }
 };

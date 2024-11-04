@@ -14,18 +14,18 @@
 #include "InputActionValue.h"
 #include "wunthshin/Components/PickUp/C_WSPickUp.h"
 #include "wunthshin/Components/Inventory/C_WSInventory.h"
-#include "Engine/OverlapResult.h"
-#include "Item/A_WSItem.h"
-#include "Item/Weapon/A_WSWeapon.h"
-#include "wunthshin/Components/CharacterStats/CharacterStatsComponent.h" 
+#include "wunthshin/Actors/Item/A_WSItem.h"
+#include "wunthshin/Actors/Item/Weapon/A_WSWeapon.h"
 #include "InputMappingContext.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "wunthshin/Enums.h"
 #include "wunthshin/Components/Shield/C_WSShield.h"
-#include "wunthshin/Data/CharacterTableRow/CharacterTableRow.h"
+#include "wunthshin/Data/Characters/CharacterTableRow/CharacterTableRow.h"
 #include "wunthshin/Data/Items/ItemMetadata/SG_WSItemMetadata.h"
 #include "wunthshin/Subsystem/ElementSubsystem/ElementSubsystem.h"
-#include "Components/WidgetComponent.h"
+
+#include "wunthshin/Components/Stats/StatsComponent.h"
+#include "wunthshin/Data/Items/DamageEvent/WSDamageEvent.h"
 #include "wunthshin/Subsystem/WorldStatusSubsystem/WorldStatusSubsystem.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -111,7 +111,7 @@ AA_WSCharacter::AA_WSCharacter()
     // are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
     // Create CharacterStats
-    CharacterStatsComponent = CreateDefaultSubobject<UCharacterStatsComponent>(TEXT("CharacterStatsComponent"));
+    CharacterStatsComponent = CreateDefaultSubobject<UStatsComponent>(TEXT("CharacterStatsComponent"));
 
     // Create a shield component.
     Shield = CreateDefaultSubobject<UC_WSShield>(TEXT("ShieldComponent"));
@@ -162,28 +162,13 @@ UScriptStruct* AA_WSCharacter::GetTableType() const
     return FCharacterTableRow::StaticStruct();
 }
 
-void AA_WSCharacter::ApplyAsset(const FDataTableRowHandle& InRowHandle)
+void AA_WSCharacter::ApplyAsset(const FTableRowBase* InRowPointer)
 {
-    if (InRowHandle.IsNull()) return;
+    if (!InRowPointer) return;
 
-    const FCharacterTableRow* Data = InRowHandle.GetRow<FCharacterTableRow>(TEXT(""));
-
-    if (!Data)
-    {
-        return;
-    }
-
-    // todo: 캐릭터의 이름, 아이콘
-
-    if (Data->SkeletalMesh)
-    {
-        GetMesh()->SetSkeletalMesh(Data->SkeletalMesh);
-    }
-
-    if (Data->AnimInstance)
-    {
-        GetMesh()->SetAnimInstanceClass(Data->AnimInstance);
-    }
+    const FCharacterTableRow* Data = reinterpret_cast<const FCharacterTableRow*>(InRowPointer);
+    
+    UpdatePawnFromDataTable(Data);
 }
 
 UClass* AA_WSCharacter::GetSubsystemType() const
@@ -214,24 +199,29 @@ void AA_WSCharacter::BeginPlay()
 
     {
         // todo/test: 효과 적용이 된 경우를 테스트, 무기/몹등이 구현되고 나서 지워야 함
-        ApplyElement(this, this, UElementSubsystem::GetElementHandle(GetWorld(), "Rock"));
-        ApplyElement(this, this, UElementSubsystem::GetElementHandle(GetWorld(), "Fire"));   
+        ApplyElement(this, UElementSubsystem::GetElementHandle(GetWorld(), "Rock"));
+        ApplyElement(this, UElementSubsystem::GetElementHandle(GetWorld(), "Fire"));
     }
 }
 
 void AA_WSCharacter::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
-    FetchAsset(this, AssetName);
+    FetchAsset(AssetName);
 }
 
 float AA_WSCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-    // todo: Montage 한번에 데미지가 여러번 들어오는걸 막아야 함
-    CharacterStatsComponent->DecreaseHP(Damage);
-    UE_LOG(LogTemplateCharacter, Warning, TEXT("TakeDamage! : %s did %f with %s to %s"), *EventInstigator->GetName(), Damage, *DamageCauser->GetName(), *GetName());
+    if (FWSDamageEvent const& CustomEvent = reinterpret_cast<FWSDamageEvent const&>(DamageEvent);
+        CustomEvent.IsFirstHit(this))
+    {
+        CharacterStatsComponent->DecreaseHP(Damage);
+        UE_LOG(LogTemplateCharacter, Warning, TEXT("TakeDamage! : %s did %f with %s to %s"), *EventInstigator->GetName(), Damage, *DamageCauser->GetName(), *GetName());
+        CustomEvent.SetFirstHit(this);
+        return Damage;   
+    }
 
-    return CharacterStatsComponent->GetHP();
+    return 0.f;
 }
 
 void AA_WSCharacter::Tick(float DeltaSeconds)

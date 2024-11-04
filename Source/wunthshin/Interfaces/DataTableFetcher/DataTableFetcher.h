@@ -11,7 +11,7 @@
 
 #include "Editor/UnrealEd/Public/Editor.h"
 
-#include "wunthshin/Data/CharacterTableRow/CharacterTableRow.h"
+#include "wunthshin/Data/Characters/CharacterTableRow/CharacterTableRow.h"
 #include "wunthshin/Data/Items/ItemTableRow/ItemTableRow.h"
 
 #include "DataTableFetcher.generated.h"
@@ -38,13 +38,35 @@ class WUNTHSHIN_API IDataTableFetcher
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	// 데이터 테이블 row 타입에 따라 핸들을 가져온 후 ApplyAsset을 호출
-	void FetchAsset(const UObject* InThisPointer, const FName& InRowName)
+	void UpdateDataTable(const FName& InRowName, const bool bForce = false) 
 	{
-		const UWorld* World = InThisPointer->GetWorld();
+		if (!DataTableRowHandle.IsNull() && !bForce) 
+		{
+			return;
+		}
+
+		const UObject* ObjectCast = Cast<UObject>(this);
+
+		if (!ObjectCast)
+		{
+			check(false);
+			return;
+		}
+
+		const UWorld* World = ObjectCast->GetWorld();
 		ensureAlwaysMsgf(World, TEXT("Invalid World!"));
-		DataTableRowHandle = GetRowHandle(World, InThisPointer, InRowName);
-		ApplyAsset(DataTableRowHandle);
+		DataTableRowHandle = GetRowHandle(ObjectCast, InRowName);
+	}
+
+	// 데이터 테이블 row 타입에 따라 핸들을 가져온 후 ApplyAsset을 호출
+	void FetchAsset(const FName& InRowName)
+	{
+		if (DataTableRowHandle.IsNull()) 
+		{
+			UpdateDataTable(InRowName);
+		}
+
+		ApplyAsset(DataTableRowHandle.GetRow<FTableRowBase>(""));
 	}
 
 	// 상속 객체에 해당하는 서브 시스템 getter
@@ -52,6 +74,8 @@ public:
 #ifdef WITH_EDITOR
 	virtual UClass* GetEditorSubsystemType() const = 0;
 #endif
+
+	USubsystem* GetSubsystem() const;
 	
 	// 상속된 클래스가 주로 사용할 테이블 row 타입
 	virtual UScriptStruct* GetTableType() const = 0;
@@ -65,10 +89,10 @@ public:
 
 protected:
 	// 조회한 데이터 테이블의 데이터를 상속받은 클래스에서 사용
-	virtual void ApplyAsset(const FDataTableRowHandle& InRowHandle) = 0;
+	virtual void ApplyAsset(const FTableRowBase* InRowPointer) = 0;
 	
 private:
-	FDataTableRowHandle GetRowHandle(const UWorld* InWorld, const UObject* InThisPointer, const FName& InRowName) const;
+	FDataTableRowHandle GetRowHandle(const UObject* InThisPointer, const FName& InRowName) const;
 
 	// 에셋 이름과 타입을 기준으로 불러온 데이터 테이블 row의 핸들
 	FDataTableRowHandle DataTableRowHandle;

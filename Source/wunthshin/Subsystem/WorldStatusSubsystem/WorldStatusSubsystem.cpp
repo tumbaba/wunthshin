@@ -5,9 +5,10 @@
 #include "wunthshin/Actors/Item/A_WSItem.h"
 #include "wunthshin/Data/Items/ItemMetadata/SG_WSItemMetadata.h"
 #include "wunthshin/Data/Effects/O_WSBaseEffect.h"
-#include "wunthshin/Actors/AA_WSCharacter.h"
 #include "Engine/OverlapResult.h"
 #include "Components/WidgetComponent.h"
+
+#include "wunthshin/Actors/Pawns/Character/AA_WSCharacter.h"
 #include "wunthshin/Components/PickUp/C_WSPickUp.h"
 
 void UWorldStatusSubsystem::Tick(float InDeltaTime)
@@ -22,7 +23,7 @@ void UWorldStatusSubsystem::Tick(float InDeltaTime)
             FCollisionQueryParams QueryParams(NAME_None, false, PlayerCharacter);
 
             // 손에 있는 무기는 주변 아이템 대상에서 제외
-            if (const AActor* ChildWeaponActor = PlayerCharacter->GetRightHandWeapon()->GetChildActor())
+            if (const AActor* ChildWeaponActor = PlayerCharacter->GetRightHandComponent()->GetChildActor())
             {
                 QueryParams.AddIgnoredActor(ChildWeaponActor);
             }

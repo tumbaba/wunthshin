@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
-#include "wunthshin/Actors/AA_WSCharacter.h"
 #include "BaseAnimInstance.generated.h"
+
+class ICommonPawn;
+class UPawnMovementComponent;
 
 /**
  * 
@@ -21,8 +23,8 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
 protected:
-	UPROPERTY()
-	class UPawnMovementComponent* MovementComponent;
+	UPROPERTY(BlueprintReadOnly)
+	UPawnMovementComponent* MovementComponent;
 
 	UPROPERTY(BlueprintReadOnly)
 	double HorizontalSpeed = 0.0f;
@@ -61,7 +63,7 @@ protected:
 	bool bwallHighthHigh = false;
 
 	UPROPERTY()
-	AA_WSCharacter* CharaterComponentRef;
+	TScriptInterface<ICommonPawn> CharaterComponentRef;
 
 public:
 	//void SetRootMotionMode();
