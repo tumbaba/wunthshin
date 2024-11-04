@@ -4,6 +4,7 @@
 #include "C_WSPickUp.h"
 
 #include "wunthshin/Interfaces/Taker/Taker.h"
+#include "wunthshin/Actors/Item/A_WSItem.h"
 
 DEFINE_LOG_CATEGORY(LogPickUpComponent);
 
@@ -15,6 +16,21 @@ UC_WSPickUp::UC_WSPickUp()
 	PrimaryComponentTick.bCanEverTick = false;
 
 	// ...
+}
+
+void UC_WSPickUp::SetTaken(const TScriptInterface<I_WSTaker>& InTaker)
+{
+	if (InTaker) 
+	{
+		OnPickUpSuccess.Broadcast(InTaker);
+		bTaken = true;
+		SetActive(false, false);
+	}
+	else 
+	{
+		bTaken = false;
+		SetActive(true, false);
+	}
 }
 
 void UC_WSPickUp::SetActive(bool bNewActive, bool bReset)
@@ -57,6 +73,8 @@ void UC_WSPickUp::HandleOnPickUp(TScriptInterface<I_WSTaker> InTriggeredActor)
 	{
 		if (InTriggeredActor->Take(this))
 		{
+			// SetTaken을 우회하고 flag만 변경
+			// 차후 Taken Flag를 이용하는 상황에 맞추기 위함
 			bTaken = true;
 
 			// 주워진 물체를 파괴함
