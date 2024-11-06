@@ -9,12 +9,17 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
-#include "wunthshin/Components/PickUp/C_WSPickUp.h"
-#include "wunthshin/Data/Items/ItemTableRow/ItemTableRow.h"
-#include "wunthshin/Data/Items/ItemMetadata/SG_WSItemMetadata.h"
-#include "wunthshin/Subsystem/Utility.h"
-#include "wunthshin/Widgets/ItemNotify/WG_WSItemNotify.h"
 #include "Components/WidgetComponent.h"
+#include "wunthshin/Components/PickUp/C_WSPickUp.h"
+#include "wunthshin/Data/Items/ItemMetadata/SG_WSItemMetadata.h"
+#include "wunthshin/Data/Items/ItemTableRow/ItemTableRow.h"
+#include "wunthshin/Subsystem/Utility.h"
+#include "wunthshin/Subsystem/GameInstanceSubsystem/Item/ItemSubsystem.h"
+#include "wunthshin/Widgets/ItemNotify/WG_WSItemNotify.h"
+
+#ifdef WITH_EDITOR
+#include "wunthshin/Subsystem/EditorSubsystem/Item/ItemEditorSubsystem.h"
+#endif
 
 class USphereComponent;
 const FName AA_WSItem::CollisionComponentName = TEXT("Collision");
@@ -177,7 +182,7 @@ UClass* AA_WSItem::GetSubsystemType() const
 	return UItemSubsystem::StaticClass();
 }
 
-#ifdef WITH_EDITOR
+#if WITH_EDITOR & !UE_BUILD_SHIPPING_WITH_EDITOR 
 UClass* AA_WSItem::GetEditorSubsystemType() const
 {
 	return UItemEditorSubsystem::StaticClass();
@@ -201,14 +206,7 @@ void AA_WSItem::BeginPlay()
 		ItemWidget->SetParentItem(this);
 	}
 
-#ifdef WITH_EDITOR
-	// 블루프린트 객체가 리컴파일하기 전까지 데이터 테이블이 수정된 사항이 반영되지 않음
-	// 블루프린트에서 설정된 에디터 메타데이터를 강제로 갱신
-	if (!GetClass()->IsNative() && GetWorld()->IsGameWorld())
-	{
-		FetchAsset(AssetName);
-	}
-#endif
+	BLUEPRINT_REFRESH_EDITOR
 
 	// note: 동적으로 설정한 충돌체의 초기화를 해야함 (블루프린트 또는 상속 클래스에서)
 }

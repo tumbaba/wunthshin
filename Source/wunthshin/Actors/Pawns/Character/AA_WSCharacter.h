@@ -178,7 +178,7 @@ public:
 	virtual void ApplyAsset(const FTableRowBase* InRowPointer) override;
 
 	virtual UClass* GetSubsystemType() const override;
-#ifdef WITH_EDITOR
+#if WITH_EDITOR & !UE_BUILD_SHIPPING_WITH_EDITOR
 	virtual UClass* GetEditorSubsystemType() const override;
 #endif
 
@@ -251,7 +251,7 @@ public:
 	virtual UC_WSShield* GetShieldComponent() const override { return Shield; }
 	virtual UStatsComponent* GetStatsComponent() const override { return CharacterStatsComponent; }
 	virtual UChildActorComponent* GetRightHandComponent() const override { return RightHandWeapon; }
-	virtual UPawnMovementComponent* GetMovementComponent() const override { return ACharacter::GetMovementComponent(); }
+	virtual UPawnMovementComponent* GetPawnMovementComponent() const override { return ACharacter::GetMovementComponent(); }
 
 	virtual void HandleStaminaDepleted() override;
 

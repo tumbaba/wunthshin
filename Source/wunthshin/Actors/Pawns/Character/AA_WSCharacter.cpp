@@ -22,12 +22,17 @@
 #include "wunthshin/Components/Shield/C_WSShield.h"
 #include "wunthshin/Data/Characters/CharacterTableRow/CharacterTableRow.h"
 #include "wunthshin/Data/Items/ItemMetadata/SG_WSItemMetadata.h"
-#include "wunthshin/Subsystem/ElementSubsystem/ElementSubsystem.h"
+#include "wunthshin/Subsystem/GameInstanceSubsystem/Element/ElementSubsystem.h"
 #include "wunthshin/Components/ClimCharacterMovementComponent.h"
 
 #include "wunthshin/Components/Stats/StatsComponent.h"
 #include "wunthshin/Data/Items/DamageEvent/WSDamageEvent.h"
-#include "wunthshin/Subsystem/WorldStatusSubsystem/WorldStatusSubsystem.h"
+#include "wunthshin/Subsystem/Utility.h"
+#ifdef WITH_EDITOR
+#include "wunthshin/Subsystem/EditorSubsystem/Character/CharacterEditorSubsystem.h"
+#endif
+#include "wunthshin/Subsystem/GameInstanceSubsystem/Character/CharacterSubsystem.h"
+#include "wunthshin/Subsystem/WorldSubsystem/WorldStatus/WorldStatusSubsystem.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -206,6 +211,19 @@ void AA_WSCharacter::ApplyAsset(const FTableRowBase* InRowPointer)
     const FCharacterTableRow* Data = reinterpret_cast<const FCharacterTableRow*>(InRowPointer);
     
     UpdatePawnFromDataTable(Data);
+    
+    if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+    {
+        if (const UStatsComponent* StatsComponent = GetStatsComponent())
+        {
+            const FCharacterMovementStats& MovementStats = StatsComponent->GetMovementStats();
+            MovementComponent->MaxWalkSpeed = MovementStats.NormalMaxSpeed;
+            MovementComponent->MaxFlySpeed = MovementStats.MaxFlyingSpeed;
+            MovementComponent->MaxWalkSpeedCrouched = MovementStats.CrouchMaxSpeed;
+            MovementComponent->JumpZVelocity = MovementStats.InitialJumpVelocity;
+            
+        }
+    }
 }
 
 UClass* AA_WSCharacter::GetSubsystemType() const
@@ -213,7 +231,7 @@ UClass* AA_WSCharacter::GetSubsystemType() const
     return UCharacterSubsystem::StaticClass();
 }
 
-#ifdef WITH_EDITOR
+#if WITH_EDITOR & !UE_BUILD_SHIPPING_WITH_EDITOR
 UClass* AA_WSCharacter::GetEditorSubsystemType() const
 {
     return UCharacterEditorSubsystem::StaticClass();
@@ -224,6 +242,8 @@ void AA_WSCharacter::BeginPlay()
 {
     // Call the base class  
     Super::BeginPlay();
+
+    BLUEPRINT_REFRESH_EDITOR
 
     // 무기를 소환하는 차일드 액터 컴포넌트가 매시에 제대로 부착되었는지 확인
     ensure(
@@ -295,9 +315,6 @@ bool AA_WSCharacter::Take(UC_WSPickUp* InTakenComponent)
     if (const AA_WSWeapon* WeaponCast = Cast<AA_WSWeapon>(Item);
         WeaponCast && !RightHandWeapon->GetChildActor())
     {
-        // todo: 동적으로 변경될떄의 대응
-        // 테스트용으로 블루프린트 클래스를 사용하기 때문에 빈 클래스를 쓰게 될 경우
-        // 대상의 아이템 및 무기의 이름에 따라 에셋을 다시 설정해줘야 함
         RightHandWeapon->SetChildActorClass(WeaponCast->GetClass());
         
         // 런타임 에셋 설정을 위해 Deferred spawn이 필요함
@@ -506,7 +523,7 @@ void AA_WSCharacter::FastRun()
 
     bIsFastRunning = true;
 	OnFastRun.Broadcast();
-    GetCharacterMovement()->MaxWalkSpeed = 1000;
+    GetCharacterMovement()->MaxWalkSpeed = GetStatsComponent()->GetMovementStats().FastMaxSpeed;
 }
 
 void AA_WSCharacter::UnFastRun()
@@ -520,7 +537,7 @@ void AA_WSCharacter::UnFastRun()
 
     bIsFastRunning = false;
 	OffFastRun.Broadcast();
-    GetCharacterMovement()->MaxWalkSpeed = 500;
+    GetCharacterMovement()->MaxWalkSpeed = GetStatsComponent()->GetMovementStats().NormalMaxSpeed;
 
     if (bIsWalkingPressing) 
     {
@@ -545,7 +562,7 @@ void AA_WSCharacter::GoOnWalk()
 
     OnWalk.Broadcast();
     bIsWalking = true;
-    GetCharacterMovement()->MaxWalkSpeed = 200;
+    GetCharacterMovement()->MaxWalkSpeed = GetStatsComponent()->GetMovementStats().WalkMaxSpeed;
 }
 
 void AA_WSCharacter::GoOffWalk() 
@@ -559,7 +576,7 @@ void AA_WSCharacter::GoOffWalk()
 
     OffWalk.Broadcast();
     bIsWalking = false;
-    GetCharacterMovement()->MaxWalkSpeed = 500;
+    GetCharacterMovement()->MaxWalkSpeed = GetStatsComponent()->GetMovementStats().NormalMaxSpeed;
 
     // 상충되는 빠르게 달리기가 눌려있다면 빠르게 달리기로 상태변환
     if (bIsFastRunningPressing) 

@@ -7,6 +7,7 @@
 #include "wunthshin/Interfaces/DataTableFetcher/DataTableFetcher.h"
 #include "wunthshin/Interfaces/ElementTracked/ElementTracked.h"
 #include "wunthshin/Interfaces/CommonPawn/CommonPawn.h"
+#include "wunthshin/Interfaces/Taker/Taker.h"
 
 #include "A_WSNPCPawn.generated.h"
 
@@ -19,7 +20,7 @@ class UC_WSInventory;
 class AA_WSNPCAIController;
 
 UCLASS()
-class WUNTHSHIN_API AA_WSNPCPawn : public APawn, public IDataTableFetcher, public IElementTracked, public ICommonPawn
+class WUNTHSHIN_API AA_WSNPCPawn : public APawn, public IDataTableFetcher, public IElementTracked, public ICommonPawn, public I_WSTaker
 {
 	GENERATED_BODY()
 
@@ -59,9 +60,6 @@ class WUNTHSHIN_API AA_WSNPCPawn : public APawn, public IDataTableFetcher, publi
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation", meta = (AllowPrivateAccess = "true"))
 	int32 HitAnimationIndex;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
-	AA_WSNPCAIController* AIController;
-
 public:
 	// Sets default values for this pawn's properties
 	AA_WSNPCPawn();
@@ -73,13 +71,14 @@ public:
 	virtual void ApplyAsset(const FTableRowBase* InRowPointer) override;
 
 	virtual UClass* GetSubsystemType() const override;
-#ifdef WITH_EDITOR
+#if WITH_EDITOR & !UE_BUILD_SHIPPING_WITH_EDITOR 
 	virtual UClass* GetEditorSubsystemType() const override;
 #endif
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
 
 public:	
 	// Called to bind functionality to input
@@ -99,7 +98,7 @@ public:
 	virtual UC_WSShield* GetShieldComponent() const override;
 	virtual UStatsComponent* GetStatsComponent() const override;
 	virtual UChildActorComponent* GetRightHandComponent() const override;
-	virtual UPawnMovementComponent* GetMovementComponent() const override;
+	virtual UPawnMovementComponent* GetPawnMovementComponent() const override;
 
 	virtual void HandleStaminaDepleted() override;
 
@@ -114,4 +113,6 @@ private:
 
 public:
 	virtual void PlayHitMontage() override;
+
+	virtual bool Take(UC_WSPickUp* InTakenComponent) override;
 };
