@@ -21,6 +21,11 @@ class WUNTHSHIN_API USG_WSItemMetadata : public USaveGame
 
 	friend struct FItemSubsystemUtility;
 
+public:
+	UPROPERTY()
+	ERarity ItemRarity;
+
+private:
 	UPROPERTY()
 	EItemType ItemType;
 
@@ -46,7 +51,9 @@ public:
 	const FEffectParameter& GetItemParameter() const;
 	
 	FName GetAssetName() const { return AssetName; }
-
+	UTexture2D* GetItemIcon() const { return ItemIcon; }
+	FName GetItemDescription() const { return ItemDescription; }
+	
 	template <EItemType ItemT>
 	bool IsItem() const
 	{
