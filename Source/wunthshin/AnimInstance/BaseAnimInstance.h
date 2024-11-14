@@ -39,6 +39,13 @@ protected:
 	double VelocityBlendspaceZ = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly)
+	double ClimbDashVelocityY = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly)
+	double ClimbDashVelocityZ = 0.0f;
+
+
+	UPROPERTY(BlueprintReadOnly)
 	bool bShoudWalk = false;
 
 	UPROPERTY(BlueprintReadOnly)
@@ -56,6 +63,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	bool bIsCliming = false;
 
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsClimDash = false;
+
 	UPROPERTY()
 	double WallHight = 0.0f;
 
@@ -72,6 +82,8 @@ protected:
 
 	UPROPERTY()
 	TScriptInterface<ICommonPawn> CharaterComponentRef;
+
+
 
 public:
 	//void SetRootMotionMode();

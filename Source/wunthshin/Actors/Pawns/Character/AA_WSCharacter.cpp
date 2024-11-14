@@ -102,7 +102,7 @@ AA_WSCharacter::AA_WSCharacter(const FObjectInitializer & ObjectInitializer)
     GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
     GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
     GetCharacterMovement()->GravityScale = 1.0f;
-    GetCharacterMovement()->SetWalkableFloorAngle(70.f);
+    GetCharacterMovement()->SetWalkableFloorAngle(50.f);
 
     // Create a camera boom (pulls in towards the player if there is a collision)
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -145,6 +145,16 @@ void AA_WSCharacter::HandleStaminaDepleted()
 bool AA_WSCharacter::CheckClimbState() const
 {
     return CilmMovementComponent->bWantsToClimbVeiw();
+}
+
+bool AA_WSCharacter::CheckClimbDashState() const
+{
+    return CilmMovementComponent->IsClimbDashing();
+}
+
+FVector AA_WSCharacter::ClimbDashDirection() const
+{
+    return CilmMovementComponent->GetClimbDashDirection();
 }
 
 void AA_WSCharacter::SetHitMontages(const TArray<UAnimMontage*>& InMontages)
@@ -405,9 +415,11 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
         EnhancedInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &AA_WSCharacter::CheckItemAndDrop);
 
         // 등반
-        EnhancedInputComponent->BindAction(ClimAction, ETriggerEvent::Started, this, &AA_WSCharacter::Climb);
+        EnhancedInputComponent->BindAction(ClimAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Climb);
 
         EnhancedInputComponent->BindAction(CancelClimAction, ETriggerEvent::Started, this, &AA_WSCharacter::CancelClimb);
+
+        
         
     }
     else
@@ -420,7 +432,7 @@ void AA_WSCharacter::Move(const FInputActionValue& Value)
 {
     // input is a Vector2D
     FVector MovementVector = Value.Get<FVector>();
-
+    
 
    
        if (Controller != nullptr)
@@ -588,15 +600,22 @@ void AA_WSCharacter::GoOffWalk()
 void AA_WSCharacter::OnJump()
 {
     UCharacterMovementComponent* CharacterComponent = GetCharacterMovement();
-    if (!bCanGlide && !CharacterComponent->IsFalling())
+    
+    if (CilmMovementComponent->IsClimbing())
+    {
+        CilmMovementComponent->TryClimbDashing();
+    }
+    else if (!bCanGlide && !CharacterComponent->IsFalling())
     {
         Jump();
     }
+    
     else if (CharacterComponent->IsFalling())
     {
         if (CanGlide())
         {
             bCanGlide = !bCanGlide;
+
             
         }
         else if (bCanGlide)
@@ -727,13 +746,17 @@ void AA_WSCharacter::CheckItemAndDrop()
 void AA_WSCharacter::Climb()
 {
     
-    CilmMovementComponent->TryClimbing();
+    
+     CilmMovementComponent->TryClimbing();
+    
 }
 
 void AA_WSCharacter::CancelClimb()
 {
     CilmMovementComponent->CancelClimbing();
 }
+
+
 
 
 

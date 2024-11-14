@@ -215,6 +215,7 @@ protected:
 
 	void Climb();
 	void CancelClimb();
+	
 
 	
 
@@ -267,6 +268,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	virtual bool CheckClimbState() const override;
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	virtual bool CheckClimbDashState() const override;
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	virtual FVector ClimbDashDirection() const override;
+	
 
 private:
 	virtual void SetHitMontages(const TArray<UAnimMontage*>& InMontages) override;

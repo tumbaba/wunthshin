@@ -26,6 +26,7 @@ void UBaseAnimInstance::NativeInitializeAnimation()
 	//CharateromponentRef = GetMove
 	
 	CharaterComponentRef = Pawn;
+	//CilmMovementComponent = Cast<UClimCharacterMovementComponent>(Pawn->GetCharacterMovement());
 }
 
 void UBaseAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -65,11 +66,15 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	const FTransform ActorTransfor = Cast<AActor>(CharaterComponentRef.GetInterface())->GetActorTransform();
 	const FVector LocalVelocity = ActorTransfor.InverseTransformVector(Velocity);
 	
+
 	VelocityBlendspaceY = LocalVelocity.Y;
 	VelocityBlendspaceZ = Velocity.Z;
+	ClimbDashVelocityY = CharaterComponentRef->ClimbDashDirection().Y;
+	ClimbDashVelocityZ = CharaterComponentRef->ClimbDashDirection().Z;
 	bShoudFastRun = CharaterComponentRef->IsFastRunning();
 	bShoudWalk = CharaterComponentRef->IsWalking();
 	bIsCliming = CharaterComponentRef->CheckClimbState();
+	bIsClimDash = CharaterComponentRef->CheckClimbDashState();
 	bIsCrouch = MovementComponent->IsCrouching();
 	bIsFalling = MovementComponent->IsFalling();
 
