@@ -53,6 +53,11 @@ public:
 	virtual bool IsWalking() const = 0;
 	// 등반하고 있는지 확인하는 함수
 	virtual bool CheckClimbState() const = 0;
+	// 등반중 대쉬하는지 확인하는 함수
+	virtual bool CheckClimbDashState() const = 0;
+	// 대쉬 할때 Direction을 가져옴
+	virtual FVector ClimbDashDirection() const = 0;
+	
 	// 스태미나가 다 떨어지면 호출되는 함수
 	virtual void HandleStaminaDepleted() = 0;
 
