@@ -72,7 +72,7 @@ AA_WSCharacter::AA_WSCharacter(const FObjectInitializer & ObjectInitializer)
         ADD_INPUT_ACTION(PickUpAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_PickUp.IA_PickUp'");
         ADD_INPUT_ACTION(DropAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Drop.IA_Drop'");
         ADD_INPUT_ACTION(ZoomWheelAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_ZoomWheel.IA_ZoomWheel'");
-        ADD_INPUT_ACTION(ClimAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Climb.IA_Climb'");
+        //ADD_INPUT_ACTION(ClimAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Climb.IA_Climb'");
         ADD_INPUT_ACTION(CancelClimAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_CancelClimb.IA_CancelClimb'");
         ADD_INPUT_ACTION(CharacterSwapOneAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Character1.IA_Character1'");
         ADD_INPUT_ACTION(CharacterSwapTwoAction, "/Script/EnhancedInput.InputAction'/Game/ThirdPerson/Input/Actions/IA_Character2.IA_Character2'")
@@ -310,12 +310,24 @@ void AA_WSCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
+    if(USpringArmComponent * SpringArm = GetCameraBoom())
+    {
+        SpringArm->TargetArmLength = FMath::FInterpTo(
+            SpringArm->TargetArmLength,  // 현재 길이
+            TargetArmLength,             // 목표 길이
+            DeltaSeconds,                   // 델타 시간
+            10.f                         // 보간 속도 (높을수록 빠르게 이동)
+        );
+    }
+
+
     if (bIsGliding)
     {
         if (!GetCharacterMovement()->IsFalling())
         {
             bIsGliding = false;
             StopJumping();
+
         }
         else
         {
@@ -442,7 +454,7 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
         EnhancedInputComponent->BindAction(DropAction, ETriggerEvent::Started, this, &AA_WSCharacter::CheckItemAndDrop);
 
         // 등반
-        EnhancedInputComponent->BindAction(ClimAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Climb);
+       // EnhancedInputComponent->BindAction(ClimAction, ETriggerEvent::Triggered, this, &AA_WSCharacter::Climb);
 
         EnhancedInputComponent->BindAction(CancelClimAction, ETriggerEvent::Started, this, &AA_WSCharacter::CancelClimb);
 
@@ -582,7 +594,7 @@ void AA_WSCharacter::FastRun()
 {
     bIsFastRunningPressing = true;
 
-    if (!CanFastRun()) 
+    if (!CanFastRun() || bIsGliding)
     {
         return;
     }
@@ -663,9 +675,9 @@ void AA_WSCharacter::OnJump()
     {
         Jump();
     }
-    
     else if (CharacterComponent->IsFalling())
     {
+        CilmMovementComponent->TryClimbing();
         if (CanGlide())
         {
             bIsGliding = !bIsGliding;
@@ -690,7 +702,7 @@ void AA_WSCharacter::ZoomWheel(const FInputActionValue& Value)
     //if (!SpringArm) { ensure(false); return; }
     const float ActionValue = Value.Get<float>();
     if (FMath::IsNearlyZero(ActionValue)) { return; }
-    SpringArm->TargetArmLength = FMath::Clamp(SpringArm->TargetArmLength + (ActionValue*50), 50.f, 500.f);
+    TargetArmLength = FMath::Clamp(SpringArm->TargetArmLength + (ActionValue*100), 50.f, 500.f);
 }
 
 
@@ -707,15 +719,15 @@ bool AA_WSCharacter::CanGlide()
     const FVector End = Start - FVector(0, 0, 300);
     bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
 
-    //DrawDebugLine
-    {
-        FColor LineColor = FColor::Red;
-        if (!bHit)
-        {
-            LineColor = FColor::Green;
-        }
-        DrawDebugLine(GetWorld(), Start, End, LineColor, false, 3.f, 0U, 2.0f);
-    }
+    ////DrawDebugLine
+    //{
+    //    FColor LineColor = FColor::Red;
+    //    if (!bHit)
+    //    {
+    //        LineColor = FColor::Green;
+    //    }
+    //    DrawDebugLine(GetWorld(), Start, End, LineColor, false, 3.f, 0U, 2.0f);
+    //}
     return !bHit;
 }
 
@@ -796,11 +808,10 @@ void AA_WSCharacter::CheckItemAndDrop()
     }
 }
 
-void AA_WSCharacter::Climb()
-{
-    
-    CilmMovementComponent->TryClimbing();
-}
+//void AA_WSCharacter::Climb()
+//{
+//    
+//}
 
 void AA_WSCharacter::CancelClimb()
 {
