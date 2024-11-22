@@ -225,9 +225,14 @@ void AA_WSCharacter::ApplyAsset(const FTableRowBase* InRowPointer)
     const FCharacterTableRow* Data = reinterpret_cast<const FCharacterTableRow*>(InRowPointer);
     
     UpdatePawnFromDataTable(Data);
+    // 초기 매시의 크기 저장
+    MeshNormalTransform = GetMesh()->GetRelativeTransform();
     
     if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
     {
+        // CDO에서 참조하여 사용할 크기가 없기 때문에 런타임에 재지정
+        MovementComponent->SetCrouchedHalfHeight(GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() * 0.5f);
+
         if (const UStatsComponent* StatsComponent = GetStatsComponent())
         {
             const FCharacterMovementStats& MovementStats = StatsComponent->GetMovementStats();
@@ -461,6 +466,26 @@ void AA_WSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
     {
         UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
     }
+}
+
+void AA_WSCharacter::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
+{
+    RecalculateBaseEyeHeight();
+    FVector& MeshRelativeLocation = GetMesh()->GetRelativeLocation_DirectMutable();
+    MeshRelativeLocation.Z = MeshNormalTransform.GetLocation().Z + HalfHeightAdjust;
+    BaseTranslationOffset.Z = MeshRelativeLocation.Z;
+
+    K2_OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+}
+
+void AA_WSCharacter::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
+{
+    RecalculateBaseEyeHeight();
+    FVector& MeshRelativeLocation = GetMesh()->GetRelativeLocation_DirectMutable();
+    MeshRelativeLocation.Z = MeshNormalTransform.GetLocation().Z;
+    BaseTranslationOffset.Z = MeshRelativeLocation.Z;
+
+    K2_OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
 }
 
 void AA_WSCharacter::Move(const FInputActionValue& Value)
