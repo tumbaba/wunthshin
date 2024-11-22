@@ -158,6 +158,9 @@ class AA_WSCharacter : public ACharacter, public I_WSTaker, public IElementTrack
 
 	float TargetArmLength = 300.f; // 기본 카메라 거리
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mesh", meta = (AllowPrivateAccess = "true"))
+	FTransform MeshNormalTransform;
+
 public:
 	//딜리게이트
 	FFastRun OnFastRun;
@@ -200,6 +203,9 @@ public:
 #endif
 
 protected:
+
+	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
