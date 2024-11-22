@@ -225,7 +225,7 @@ void AA_WSCharacter::ApplyAsset(const FTableRowBase* InRowPointer)
     const FCharacterTableRow* Data = reinterpret_cast<const FCharacterTableRow*>(InRowPointer);
     
     UpdatePawnFromDataTable(Data);
-    // 초기 매시의 크기 저장
+    // 초기 매시의 로컬 위치 저장
     MeshNormalTransform = GetMesh()->GetRelativeTransform();
     
     if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
